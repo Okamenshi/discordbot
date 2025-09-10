@@ -3,13 +3,10 @@ from discord.ext import commands
 import logging
 from dotenv import load_dotenv
 import os
-from openai import OpenAI
 
 load_dotenv()
 token = os.getenv('DISCORD_TOKEN')
 
-
-client_openai = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 
 handler = logging.FileHandler(filename='.venv/discord.log', encoding='utf-8', mode='w')
 intents = discord.Intents.default()

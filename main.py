@@ -255,5 +255,10 @@ async def steam_search(interaction: discord.Interaction, game_name: str):
 async def magicktrick(interaction: discord.Interaction):
     await interaction.response.send_message(f'{interaction.user.name} explode')
 
+@bot.tree.command(name="balls")
+async def balls(interaction: discord.Interaction, user: discord.Member):
+    name = user.name
+    await interaction.response.send_message(f"Okay! taking {name}'s balls")
+
 # ---------- RUN BOT ----------
 bot.run(token, log_handler=handler, log_level=logging.DEBUG)

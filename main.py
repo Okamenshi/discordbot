@@ -117,6 +117,16 @@ async def check_steam_playtime_db(steam_id: str, channel_id: int, interval: int 
 # ---------- EVENTS ----------
 @bot.event
 async def on_ready():
+    try:
+        synced = await bot.tree.sync()
+        print(f"✅ Synced {len(synced)} slash commands")
+
+        # List the synced commands
+        for command in synced:
+            print(f"  - /{command.name}: {command.description}")
+
+    except Exception as e:
+        print(f"❌ Failed to sync commands: {e}")
     print(f'Bot is ready: {bot.user.name}')
     # Resume tracking users from DB
     cursor.execute("SELECT steam_id, channel_id FROM tracked_users")

@@ -4,6 +4,7 @@ import logging
 from dotenv import load_dotenv
 import os
 import requests
+from scripts.regsetup import description
 
 # Load environment variables
 load_dotenv()
@@ -198,6 +199,8 @@ async def steam_search(interaction: discord.Interaction, game_name: str):
     except Exception as e:
         await interaction.response.send_message(f"Error searching for games: {str(e)}")
 
-
+@bot.tree.command(name="magicktrick", description="mmnnngh")
+async def magicktrick(interaction: discord.Interaction):
+    await interaction.response.send_message(f'{interaction.user.name} explode')
 # ---------- RUN BOT ----------
 bot.run(token, log_handler=handler, log_level=logging.DEBUG)

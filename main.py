@@ -4,8 +4,7 @@ import logging
 from dotenv import load_dotenv
 import os
 import requests
-import sqlite3
-import asyncio
+from scripts.regsetup import description
 
 # Load environment variables
 load_dotenv()
@@ -28,29 +27,14 @@ intents.messages = True
 bot = commands.Bot(command_prefix='/', intents=intents)
 
 
-conn = sqlite3.connect('steam_playtime.db')
-cursor = conn.cursor()
-
-# Create table if not exists
-cursor.execute("""
-CREATE TABLE IF NOT EXISTS steam_playtime (
-    steam_id TEXT NOT NULL,
-    appid INTEGER NOT NULL,
-    game_name TEXT,
-    playtime_forever INTEGER,
-    PRIMARY KEY (steam_id, appid)
-)
-""")
-conn.commit()
-
 @bot.event
 async def on_ready():
     print(f'Bot is ready: {bot.user.name}')
-
-    # Start tracking previously registered users
-    cursor.execute("SELECT steam_id, channel_id FROM tracked_users")
-    for steam_id, channel_id in cursor.fetchall():
-        bot.loop.create_task(check_steam_playtime_db(steam_id, int(channel_id), interval=300))
+    try:
+        synced = await bot.tree.sync()
+        print(f"Synced {len(synced)} slash command(s)")
+    except Exception as e:
+        print(f"Failed to sync commands: {e}")
 
 
 @bot.event
@@ -84,31 +68,6 @@ async def resolve_steam_id(steam_id_or_vanity):
         return data['response']['steamid']
     except Exception:
         return None
-
-
-@bot.tree.command(name="track_steam", description="Start tracking a Steam user's playtime")
-async def track_steam(interaction: discord.Interaction, steam_id: str):
-    """Start tracking a Steam account's playtime and send updates to the current channel."""
-    discord_user_id = str(interaction.user.id)
-    channel_id = str(interaction.channel_id)
-
-    # Resolve Steam ID
-    real_steam_id = await resolve_steam_id(steam_id)
-    if not real_steam_id:
-        await interaction.response.send_message("Invalid Steam ID or vanity URL.", ephemeral=True)
-        return
-
-    # Add to DB
-    cursor.execute(
-        "INSERT OR IGNORE INTO tracked_users (discord_user_id, steam_id, channel_id) VALUES (?, ?, ?)",
-        (discord_user_id, real_steam_id, channel_id)
-    )
-    conn.commit()
-
-    # Start background tracking task
-    bot.loop.create_task(check_steam_playtime_db(real_steam_id, int(channel_id), interval=300))
-
-    await interaction.response.send_message(f"Started tracking Steam user `{steam_id}` in this channel!")
 
 
 @bot.tree.command(name="steam_user", description="Get Steam user information")
@@ -243,60 +202,5 @@ async def steam_search(interaction: discord.Interaction, game_name: str):
 @bot.tree.command(name="magicktrick", description="mmnnngh")
 async def magicktrick(interaction: discord.Interaction):
     await interaction.response.send_message(f'{interaction.user.name} explode')
-
-async def check_steam_playtime_db(steam_id: str, channel_id: int, interval: int = 300):
-    """Checks Steam games and logs if playtime changed, storing data in DB."""
-    channel = bot.get_channel(channel_id)
-
-    while True:
-        real_steam_id = await resolve_steam_id(steam_id)
-        if not real_steam_id:
-            await channel.send(f"Invalid Steam ID or vanity URL: {steam_id}")
-            return
-
-        try:
-            url = f"{STEAM_API_BASE}/IPlayerService/GetRecentlyPlayedGames/v0001/"
-            params = {'key': steam_api_key, 'steamid': real_steam_id, 'count': 50}
-            resp = requests.get(url, params=params, timeout=10)
-            resp.raise_for_status()
-            data = resp.json()
-            games = data.get('response', {}).get('games', [])
-
-            for game in games:
-                appid = game['appid']
-                new_playtime = game['playtime_forever']
-                game_name = game['name']
-
-                # Fetch existing record
-                cursor.execute(
-                    "SELECT playtime_forever FROM steam_playtime WHERE steam_id=? AND appid=?",
-                    (real_steam_id, appid)
-                )
-                result = cursor.fetchone()
-
-                if result:
-                    old_playtime = result[0]
-                    if new_playtime != old_playtime:
-                        hours_changed = round((new_playtime - old_playtime) / 60, 1)
-                        await channel.send(
-                            f"User {steam_id} has played **{game_name}** for {hours_changed}h since last check."
-                        )
-                        cursor.execute(
-                            "UPDATE steam_playtime SET playtime_forever=? WHERE steam_id=? AND appid=?",
-                            (new_playtime, real_steam_id, appid)
-                        )
-                else:
-                    # Insert new record
-                    cursor.execute(
-                        "INSERT INTO steam_playtime (steam_id, appid, game_name, playtime_forever) VALUES (?, ?, ?, ?)",
-                        (real_steam_id, appid, game_name, new_playtime)
-                    )
-            conn.commit()
-
-        except Exception as e:
-            await channel.send(f"Error checking Steam playtime: {str(e)}")
-
-        await asyncio.sleep(interval)
-
 # ---------- RUN BOT ----------
 bot.run(token, log_handler=handler, log_level=logging.DEBUG)

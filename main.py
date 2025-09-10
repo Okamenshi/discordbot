@@ -4,7 +4,7 @@ import logging
 from dotenv import load_dotenv
 import os
 import requests
-from scripts.regsetup import description
+
 
 # Load environment variables
 load_dotenv()

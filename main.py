@@ -190,4 +190,9 @@ async def steam_search(interaction: discord.Interaction, game_name: str):
         await interaction.response.send_message(f"Error searching for games: {str(e)}")
 
 
+@bot.tree.command(name="magicktrick", description="mmmmnnngh")
+async def magick(interaction: discord.Interaction):
+    await interaction.response.send_message(f'{interaction.user.name} explode')
+
+
 bot.run(token, log_handler=handler, log_level=logging.DEBUG)

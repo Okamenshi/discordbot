@@ -56,7 +56,7 @@ async def chatgpt_command(interaction: discord.Interaction, question: str):
 
     try:
         response = client_openai.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model="gpt-5",
             messages=[
                 {"role": "user", "content": question}
             ],

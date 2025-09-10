@@ -31,11 +31,7 @@ async def on_message(message):
         await channel.send(f'I hope you fucking die {message.author} what kind of retard would say "{message.content}"')
         return
 
-    if message.author.name == 'fishfcker7':
-        await channel.send(f'Hello, {message.author}!')
-        return
 
-    await bot.process_commands(message)
 
 
 bot.run(token, log_handler=handler, log_level=logging.DEBUG)

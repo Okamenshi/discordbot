@@ -263,8 +263,9 @@ async def steam_search(interaction: discord.Interaction, game_name: str):
 # ---------- FUN COMMAND ----------
 
 @bot.tree.command(name="thickofit", description="Im in the thick of it")
-async def thickofit(interaction: discord.Interaction):
-    await interaction.response.send_message(f"Im in the thick of it {interaction.user.name} knows they know me where it snows i {interaction.user.name} in and they froze i dont know no nothing bout no {interaction.user.name} im just cold 40 something milly ive been told ")
+async def thickofit(interaction: discord.Interaction, user: discord.Member):
+    name = user.name
+    await interaction.response.send_message(f"Im in the thick of it {name} knows they know me where it snows i {name} in and they froze i dont know no nothing bout no {name} im just cold 40 something milly ive been told ")
 
 @bot.tree.command(name="magicktrick", description="mmnnngh")
 async def magicktrick(interaction: discord.Interaction):

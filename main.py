@@ -60,8 +60,6 @@ async def chatgpt_command(interaction: discord.Interaction, question: str):
             messages=[
                 {"role": "user", "content": question}
             ],
-            max_tokens=1000,
-            temperature=0.7
         )
 
         # Get the response content

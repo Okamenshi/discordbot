@@ -263,7 +263,7 @@ async def steam_search(interaction: discord.Interaction, game_name: str):
 # ---------- FUN COMMAND ----------
 
 
-@bot.tree.command(name="camelCrusade", description="🐫🐫🐫🐫🐫🐫")
+@bot.tree.command(name="camelcrusade", description="🐫🐫🐫🐫🐫🐫")
 async def magicktrick(interaction: discord.Interaction):
     await interaction.response.send_message(f'{interaction.user.name} Camel crusade!! 🗣️🐫🐫🐫🐫🐫')
 

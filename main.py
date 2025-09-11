@@ -1,43 +1,33 @@
 import discord
 from discord.ext import commands
 import logging
-from dotenv import load_dotenv
 import os
 import requests
-import sqlite3
-import asyncio
+import pymysql
 
-# ---------- DATABASE SETUP ----------
-conn = sqlite3.connect('steam_playtime.db')
-cursor = conn.cursor()
 
-# Table for storing playtime info
-cursor.execute("""
-CREATE TABLE IF NOT EXISTS steam_playtime (
-    steam_id TEXT NOT NULL,
-    appid INTEGER NOT NULL,
-    game_name TEXT,
-    playtime_forever INTEGER,
-    PRIMARY KEY (steam_id, appid)
-)
-""")
-
-# Table for tracking users
-cursor.execute("""
-CREATE TABLE IF NOT EXISTS tracked_users (
-    discord_user_id TEXT NOT NULL,
-    steam_id TEXT NOT NULL,
-    channel_id TEXT NOT NULL,
-    PRIMARY KEY(discord_user_id, steam_id)
-)
-""")
-conn.commit()
 
 # ---------- ENVIRONMENT VARIABLES ----------
-load_dotenv()
 token = os.getenv('DISCORD_TOKEN')
 steam_api_key = os.getenv('STEAM_API_KEY')
 STEAM_API_BASE = "https://api.steampowered.com"
+
+# db setup
+
+try:
+    connection = pymysql.connect(
+        host=os.getenv('MYSQLHOST'),
+        port=int(os.getenv('MYSQLPORT')),
+        user=os.getenv('MYSQLUSER'),
+        password=os.getenv('MYSQLPASSWORD'),
+        db=os.getenv('DATABASE_URL'),
+    )
+    print("Connection established")
+    connection.close()
+    print("Connection closed")
+except Exception as e:
+    print(e)
+
 
 # ---------- LOGGING ----------
 handler = logging.FileHandler(filename='.venv/discord.log', encoding='utf-8', mode='w')
@@ -67,53 +57,6 @@ async def resolve_steam_id(steam_id_or_vanity):
     except Exception:
         return None
 
-async def check_steam_playtime_db(steam_id: str, channel_id: int, interval: int = 300):
-    """Check Steam games and log playtime changes, saving data in DB."""
-    channel = bot.get_channel(channel_id)
-    while True:
-        real_steam_id = await resolve_steam_id(steam_id)
-        if not real_steam_id:
-            await channel.send(f"Invalid Steam ID or vanity URL: {steam_id}")
-            return
-        try:
-            url = f"{STEAM_API_BASE}/IPlayerService/GetRecentlyPlayedGames/v0001/"
-            params = {'key': steam_api_key, 'steamid': real_steam_id, 'count': 50}
-            resp = requests.get(url, params=params, timeout=10)
-            resp.raise_for_status()
-            data = resp.json()
-            games = data.get('response', {}).get('games', [])
-
-            for game in games:
-                appid = game['appid']
-                new_playtime = game['playtime_forever']
-                game_name = game['name']
-
-                cursor.execute(
-                    "SELECT playtime_forever FROM steam_playtime WHERE steam_id=? AND appid=?",
-                    (real_steam_id, appid)
-                )
-                result = cursor.fetchone()
-                if result:
-                    old_playtime = result[0]
-                    if new_playtime != old_playtime:
-                        hours_changed = round((new_playtime - old_playtime)/60, 1)
-                        await channel.send(
-                            f"User {steam_id} has played **{game_name}** for {hours_changed}h since last check."
-                        )
-                        cursor.execute(
-                            "UPDATE steam_playtime SET playtime_forever=? WHERE steam_id=? AND appid=?",
-                            (new_playtime, real_steam_id, appid)
-                        )
-                else:
-                    cursor.execute(
-                        "INSERT INTO steam_playtime (steam_id, appid, game_name, playtime_forever) VALUES (?, ?, ?, ?)",
-                        (real_steam_id, appid, game_name, new_playtime)
-                    )
-            conn.commit()
-        except Exception as e:
-            await channel.send(f"Error checking Steam playtime: {str(e)}")
-        await asyncio.sleep(interval)
-
 # ---------- EVENTS ----------
 @bot.event
 async def on_ready():
@@ -129,9 +72,6 @@ async def on_ready():
         print(f"❌ Failed to sync commands: {e}")
     print(f'Bot is ready: {bot.user.name}')
     # Resume tracking users from DB
-    cursor.execute("SELECT steam_id, channel_id FROM tracked_users")
-    for steam_id, channel_id in cursor.fetchall():
-        bot.loop.create_task(check_steam_playtime_db(steam_id, int(channel_id), interval=300))
 
 @bot.event
 async def on_message(message):
@@ -140,24 +80,7 @@ async def on_message(message):
     await bot.process_commands(message)
 
 # ---------- COMMANDS ----------
-@bot.tree.command(name="track_steam", description="Start tracking a Steam user's playtime")
-async def track_steam(interaction: discord.Interaction, steam_id: str):
-    """Start tracking a Steam account's playtime and send updates to the current channel."""
-    discord_user_id = str(interaction.user.id)
-    channel_id = str(interaction.channel_id)
-    real_steam_id = await resolve_steam_id(steam_id)
-    if not real_steam_id:
-        await interaction.response.send_message("Invalid Steam ID or vanity URL.", ephemeral=True)
-        return
 
-    cursor.execute(
-        "INSERT OR IGNORE INTO tracked_users (discord_user_id, steam_id, channel_id) VALUES (?, ?, ?)",
-        (discord_user_id, real_steam_id, channel_id)
-    )
-    conn.commit()
-
-    bot.loop.create_task(check_steam_playtime_db(real_steam_id, int(channel_id), interval=300))
-    await interaction.response.send_message(f"Started tracking Steam user `{steam_id}` in this channel!")
 
 @bot.tree.command(name="steam_user", description="Get Steam user information")
 async def steam_user(interaction: discord.Interaction, steam_id: str):
@@ -253,12 +176,6 @@ async def steam_game_info(interaction: discord.Interaction, app_id: str):
         await interaction.response.send_message(embed=embed)
     except Exception as e:
         await interaction.response.send_message(f"Error fetching game information: {str(e)}")
-
-@bot.tree.command(name="steam_search", description="Search for Steam games")
-async def steam_search(interaction: discord.Interaction, game_name: str):
-    await interaction.response.send_message(
-        f"Searching for '{game_name}' - feature requires Steam search API implementation."
-    )
 
 # ---------- FUN COMMAND ----------
 

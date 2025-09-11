@@ -179,6 +179,12 @@ async def steam_game_info(interaction: discord.Interaction, app_id: str):
 
 # ---------- FUN COMMAND ----------
 
+
+@bot.tree.command(name="camelcrusade", description="🐫🐫🐫🐫🐫🐫")
+async def magicktrick(interaction: discord.Interaction):
+    await interaction.response.send_message(f'{interaction.user.name} Camel crusade!! 🗣️🐫🐫🐫🐫🐫')
+
+
 @bot.tree.command(name="thickofit", description="Im in the thick of it")
 async def thickofit(interaction: discord.Interaction, user: discord.Member):
     name = user.name

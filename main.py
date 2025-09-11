@@ -20,7 +20,7 @@ try:
         port=int(os.getenv('MYSQLPORT')),
         user=os.getenv('MYSQLUSER'),
         password=os.getenv('MYSQLPASSWORD'),
-        db=os.getenv('DATABASE_URL'),
+        db=os.getenv('MYSQLDATABASE'),
     )
     print("Connection established")
     connection.close()
